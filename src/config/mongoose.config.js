@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import mongoose from 'mongoose';
 
 const connectDB = async () => {
@@ -6,7 +8,9 @@ const connectDB = async () => {
     console.log('MongoDB povezan');
   } catch (error) {
     console.error('Napaka pri povezavi na MongoDB', error);
-    process.exit(1);
+    if (process.env.NODE_ENV !== 'test') {
+      process.exit(1);
+    }
   }
 };
 

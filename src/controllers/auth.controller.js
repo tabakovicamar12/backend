@@ -21,7 +21,7 @@ const protect = (req, res, next) => {
         req.user = decoded;
         next();
     } catch (error) {
-        return res.status(401).json({ error: 'Neveljaven žeton.' });
+        return res.status(401).json({ error: 'Neveljaven žeton upo.' });
     }
 };
 

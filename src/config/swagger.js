@@ -14,7 +14,7 @@ const options = {
     },
     servers: [
       {
-        url: 'https://backend-service-tabakovic.onrender.com',
+        url: 'https://backend-service-latest-dj2i.onrender.com',
         description: 'Production server'
       },
       {

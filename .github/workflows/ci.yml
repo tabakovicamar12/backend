@@ -6,15 +6,12 @@ on:
   pull_request:
     branches: [ main ]
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 jobs:
   test:
     name: Run tests and generate coverage
     runs-on: ubuntu-latest
+    permissions:
+      contents: read 
     strategy:
       matrix:
         node-version: [18.x]
@@ -55,6 +52,8 @@ jobs:
     name: SonarCloud Analysis
     needs: test  
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -78,6 +77,11 @@ jobs:
   deploy-pages:
     needs: sonarcloud 
     runs-on: ubuntu-latest
+    # Dodana specifična dovoljenja za GitHub Pages
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

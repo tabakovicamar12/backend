@@ -14,7 +14,7 @@ const options = {
     },
     servers: [
       {
-        url: 'https://backend-service-latest-dj2i.onrender.com',
+        url: 'https://backend-service-latest-dj2i.onrender.com/authService',
         description: 'Production server'
       },
       {

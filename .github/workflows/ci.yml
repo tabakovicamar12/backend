@@ -2,7 +2,7 @@ name: Node.js CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, production ]
   pull_request:
     branches: [ main ]
 
@@ -10,20 +10,18 @@ jobs:
   test:
     name: Run tests and generate coverage
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read 
     strategy:
       matrix:
         node-version: [18.x]
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
-
+        uses: actions/checkout@v4 
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-
       - name: Cache Node modules
         uses: actions/cache@v3
         with:
@@ -31,61 +29,114 @@ jobs:
           key: ${{ runner.os }}-node-backend-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-backend-
-
       - name: Install dependencies
         run: npm ci
-
       - name: Setup environment variables
         run: |
           echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> $GITHUB_ENV
           echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> $GITHUB_ENV
-
       - name: Run tests with coverage
         run: npm test -- --coverage --coverageDirectory=coverage --silent
-
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage
-
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: backend-dist
           path: .
 
-  docker:
-    needs: test
+  sonarcloud:
+    name: SonarCloud Analysis
+    needs: test  
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Download Coverage Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage
 
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v3.1.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.qualitygate.wait=true
+
+  deploy-pages:
+    name: Deploy GitHub Pages
+    needs: sonarcloud 
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write      
+      id-token: write   
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './docs' 
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+
+  deploy-dev:
+    name: Deploy to Development Environment
+    needs: sonarcloud 
+    if: github.ref == 'refs/heads/main'
+    environment: Development
+    runs-on: ubuntu-latest
+    steps:
       - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
           name: backend-dist
-
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build and Push Docker image
+      - name: Build and Push Dev Image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/backend-service:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/backend-service:dev 
 
-  deploy:
-    needs: docker
+  deploy-prod:
+    name: Deploy to Production Environment
+    needs: sonarcloud 
+    if: github.ref == 'refs/heads/production'
+    environment: Production 
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-      - name: Trigger Render Deployment
-        run: |
-          curl -f "${{ secrets.RENDER_BACKEND_DEPLOY_HOOK }}"
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-dist
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build and Push Prod Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/backend-service:prod # Oznaka prod

@@ -76,6 +76,7 @@ jobs:
             -Dsonar.qualitygate.wait=true
 
   deploy-pages:
+    name: Deploy GitHub Pages
     needs: sonarcloud 
     runs-on: ubuntu-latest
     permissions:
@@ -95,6 +96,7 @@ jobs:
         uses: actions/deploy-pages@v4
 
   deploy-dev:
+    name: Deploy to Development Environment
     needs: sonarcloud 
     if: github.ref == 'refs/heads/main'
     environment: Development
@@ -117,6 +119,7 @@ jobs:
           tags: ${{ secrets.DOCKER_USERNAME }}/backend-service:dev 
 
   deploy-prod:
+    name: Deploy to Production Environment
     needs: sonarcloud 
     if: github.ref == 'refs/heads/production'
     environment: Production 
@@ -136,4 +139,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/backend-service:prod
+          tags: ${{ secrets.DOCKER_USERNAME }}/backend-service:prod # Oznaka prod

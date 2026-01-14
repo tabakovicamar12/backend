@@ -14,6 +14,10 @@ const options = {
     },
     servers: [
       {
+        url: 'https://backend-service-tabakovic.onrender.com',
+        description: 'Production server'
+      },
+      {
         url: "http://localhost:3000/authService",
       },
     ],
